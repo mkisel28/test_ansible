@@ -2,11 +2,24 @@
 - name: Install Docker on Ubuntu
   hosts: all
   become: yes
+  become_method: sudo
+  become_user: root
   vars:
     docker_users:
       - "{{ ansible_user }}"
   
   tasks:
+    - name: Check if user has sudo rights
+      command: sudo -n true
+      register: sudo_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Fail if no sudo rights
+      fail:
+        msg: "User {{ ansible_user }} does not have sudo rights. Please configure sudo or use root user."
+      when: sudo_check.rc != 0
+
     - name: Update apt package index
       apt:
         update_cache: yes
