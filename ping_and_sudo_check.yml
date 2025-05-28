@@ -1,0 +1,16 @@
+---
+- name: Проверка подключения и прав sudo
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Проверка соединения (ping)
+      ping:
+
+    - name: Проверка выполнения sudo
+      command: whoami
+      register: whoami_result
+
+    - name: Вывод результата sudo
+      debug:
+        msg: "Команда выполнена от пользователя: {{ whoami_result.stdout }}"
