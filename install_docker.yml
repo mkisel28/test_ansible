@@ -1,6 +1,6 @@
 ---
 - name: Установка Docker на Ubuntu
-  hosts: docker-hosts
+  hosts: hosts
   become: true
 
   tasks:
