@@ -81,7 +81,7 @@
     - name: Set user password for sudo access
       user:
         name: "{{ username }}"
-        password: "{{ generated_password | password_hash('sha512') }}"
+        password: "{{ generated_password | password_hash }}"
       when: sudo_access | bool
       
     - name: Add user to sudo group
