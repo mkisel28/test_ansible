@@ -1,0 +1,151 @@
+---
+- name: Create user with SSH key authentication
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    # Задайте эти переменные при запуске или в inventory
+    username: ""  # Обязательно
+    ssh_public_key: ""  # Обязательно
+    sudo_access: false  # По умолчанию false
+    ssh_config_dir: "/etc/ssh/sshd_config.d"
+    
+  tasks:
+    - name: Validate username format
+      fail:
+        msg: "Invalid username. Use only lowercase letters, numbers and hyphens, starting with a letter."
+      when: not (username | regex_match('^[a-z][-a-z0-9]*$'))
+      
+    - name: Check if user already exists
+      getent:
+        database: passwd
+        key: "{{ username }}"
+      register: user_exists
+      failed_when: false
+      
+    - name: Fail if user already exists
+      fail:
+        msg: "User '{{ username }}' already exists"
+      when: user_exists.ansible_facts.getent_passwd[username] is defined
+      
+    - name: Create user with disabled password
+      user:
+        name: "{{ username }}"
+        shell: /bin/bash
+        create_home: yes
+        password_lock: yes
+        state: present
+      register: user_creation
+      
+    - name: Display user creation success
+      debug:
+        msg: "User '{{ username }}' created successfully (password login disabled)"
+      when: user_creation is succeeded
+      
+    - name: Create .ssh directory
+      file:
+        path: "/home/{{ username }}/.ssh"
+        state: directory
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: '0700'
+        
+    - name: Create user-specific authorized_keys file
+      copy:
+        content: "{{ ssh_public_key }}"
+        dest: "/home/{{ username }}/.ssh/authorized_keys_{{ username }}"
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: '0600'
+        
+    - name: Create main authorized_keys file with header
+      copy:
+        content: |
+          # SSH ключи для пользователя {{ username }}
+          {{ ssh_public_key }}
+        dest: "/home/{{ username }}/.ssh/authorized_keys"
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: '0600'
+        
+    - name: Display SSH key info
+      debug:
+        msg: "SSH key added to file: /home/{{ username }}/.ssh/authorized_keys_{{ username }}"
+        
+    - name: Generate random password for sudo access
+      set_fact:
+        generated_password: "{{ lookup('password', '/dev/null length=16 chars=ascii_letters,digits') }}"
+      when: sudo_access | bool
+      
+    - name: Set user password for sudo access
+      user:
+        name: "{{ username }}"
+        password: "{{ generated_password | password_hash('sha512') }}"
+      when: sudo_access | bool
+      
+    - name: Add user to sudo group
+      user:
+        name: "{{ username }}"
+        groups: sudo
+        append: yes
+      when: sudo_access | bool
+      
+    - name: Display sudo access granted
+      debug:
+        msg: "Sudo access granted to user '{{ username }}' (requires password)"
+      when: sudo_access | bool
+      
+    - name: Display no sudo access
+      debug:
+        msg: "Sudo access not granted"
+      when: not (sudo_access | bool)
+      
+    - name: Create SSH config directory
+      file:
+        path: "{{ ssh_config_dir }}"
+        state: directory
+        mode: '0755'
+        
+    - name: Create user-specific SSH configuration
+      copy:
+        content: |
+          # SSH конфигурация для пользователя {{ username }}
+          Match User {{ username }}
+              PasswordAuthentication no
+              PubkeyAuthentication yes
+              AuthenticationMethods publickey
+              MaxAuthTries 9
+        dest: "{{ ssh_config_dir }}/user_{{ username }}.conf"
+        mode: '0644'
+      notify: reload_ssh
+      
+    - name: Display SSH config file creation
+      debug:
+        msg: "Created SSH configuration file: {{ ssh_config_dir }}/user_{{ username }}.conf"
+        
+  handlers:
+    - name: reload_ssh
+      systemd:
+        name: "{{ 'ssh' if ansible_service_mgr == 'systemd' and 'ssh' in ansible_facts.services else 'sshd' }}"
+        state: reloaded
+      ignore_errors: yes
+      
+    - name: Display SSH service reload
+      debug:
+        msg: "SSH service reloaded"
+        
+  post_tasks:
+    - name: Display final information
+      debug:
+        msg: |
+          ====== ИНФОРМАЦИЯ О СОЗДАННОМ ПОЛЬЗОВАТЕЛЕ ======
+          Имя пользователя: {{ username }}
+          Пароль: {{ generated_password | default('НЕТ') }}
+          SSH ключ сохранен в: /home/{{ username }}/.ssh/authorized_keys_{{ username }}
+          Sudo доступ: {{ sudo_access }}
+          Аутентификация: только по SSH ключу (пароль отключен)
+          =================================================
+          
+          ВАЖНО: Сохраните пароль в безопасном месте!
+          Для подключения используйте: ssh -i your_private_key {{ username }}@server_ip
