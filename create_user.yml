@@ -126,14 +126,15 @@
         
   handlers:
     - name: reload_ssh
-      systemd:
-        name: "{{ 'ssh' if ansible_service_mgr == 'systemd' and 'ssh' in ansible_facts.services else 'sshd' }}"
+      ansible.builtin.systemd:
+        name: sshd
         state: reloaded
       ignore_errors: yes
-      
+
     - name: Display SSH service reload
       debug:
         msg: "SSH service reloaded"
+
         
   post_tasks:
     - name: Display final information
