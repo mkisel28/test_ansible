@@ -13,9 +13,9 @@
     
   tasks:
     - name: Validate username format
-      fail:
+      ansible.builtin.fail:
         msg: "Invalid username. Use only lowercase letters, numbers and hyphens, starting with a letter."
-      when: not (username | regexp('^[a-z][-a-z0-9]*$'))
+      when: username is not match("^[a-z][-a-z0-9]*$")
       
     - name: Check if user already exists
       getent:
