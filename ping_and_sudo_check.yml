@@ -2,9 +2,9 @@
 - name: Проверка подключения и прав sudo
   hosts: all
   become: true
-  tasks:
 
-    - name: Проверка соединения (ping)
+  tasks:
+    - name: Проверка соединения
       ping:
 
     - name: Проверка выполнения sudo

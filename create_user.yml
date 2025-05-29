@@ -13,7 +13,7 @@
   tasks:
     - name: Валидация username
       ansible.builtin.fail:
-        msg: "Invalid username. Use only lowercase letters, numbers and hyphens, starting with a letter."
+        msg: "Некоректный username"
       when: username is not match("^[a-z][-a-z0-9]*$")
       
     - name: Проверка есть ли уже пользователь в система
@@ -60,8 +60,7 @@
         
     - name: Создание основного файла authorized_keys с заголовко
       copy:
-        content: |
-          {{ ssh_public_key }}
+        content: "{{ ssh_public_key }}"
         dest: "/home/{{ username }}/.ssh/authorized_keys"
         owner: "{{ username }}"
         group: "{{ username }}"
@@ -69,7 +68,7 @@
         
     - name: Вывод информации о SSH ключе
       debug:
-        msg: "SSH key added to file: /home/{{ username }}/.ssh/authorized_keys_{{ username }}"
+        msg: "SSH ключ был добавлен в: /home/{{ username }}/.ssh/authorized_keys_{{ username }}"
         
     - name: Генерация случайного пароля для доступа sudo
       set_fact:
