@@ -15,7 +15,7 @@
     - name: Validate username format
       fail:
         msg: "Invalid username. Use only lowercase letters, numbers and hyphens, starting with a letter."
-      when: not (username | regex_match('^[a-z][-a-z0-9]*$'))
+      when: not (username | regexp('^[a-z][-a-z0-9]*$'))
       
     - name: Check if user already exists
       getent:
