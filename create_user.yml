@@ -5,10 +5,9 @@
   gather_facts: yes
   
   vars:
-    # Задайте эти переменные при запуске или в inventory
-    username: ""  # Обязательно
-    ssh_public_key: ""  # Обязательно
-    sudo_access: false  # По умолчанию false
+    username: ""
+    ssh_public_key: ""
+    sudo_access: false
     ssh_config_dir: "/etc/ssh/sshd_config.d"
     
   tasks:
@@ -62,7 +61,6 @@
     - name: Create main authorized_keys file with header
       copy:
         content: |
-          # SSH ключи для пользователя {{ username }}
           {{ ssh_public_key }}
         dest: "/home/{{ username }}/.ssh/authorized_keys"
         owner: "{{ username }}"
@@ -110,7 +108,6 @@
     - name: Create user-specific SSH configuration
       copy:
         content: |
-          # SSH конфигурация для пользователя {{ username }}
           Match User {{ username }}
               PasswordAuthentication no
               PubkeyAuthentication yes
@@ -137,16 +134,11 @@
 
         
   post_tasks:
-    - name: Display final information
+    - name: Completed
       debug:
         msg: |
-          ====== ИНФОРМАЦИЯ О СОЗДАННОМ ПОЛЬЗОВАТЕЛЕ ======
           Имя пользователя: {{ username }}
           Пароль: {{ generated_password | default('НЕТ') }}
           SSH ключ сохранен в: /home/{{ username }}/.ssh/authorized_keys_{{ username }}
           Sudo доступ: {{ sudo_access }}
           Аутентификация: только по SSH ключу (пароль отключен)
-          =================================================
-          
-          ВАЖНО: Сохраните пароль в безопасном месте!
-          Для подключения используйте: ssh -i your_private_key {{ username }}@server_ip
